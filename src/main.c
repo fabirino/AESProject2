@@ -1,5 +1,6 @@
-#include <stdio.h>
 #include <lxc/lxccontainer.h>
+#include <stdio.h>
+#include <unistd.h>
 
 int main() {
     struct lxc_container *c;
@@ -14,12 +15,19 @@ int main() {
 
     if (c->is_defined(c)) {
         fprintf(stderr, "Container already exists\n");
+        /* Destroy the container */
+        if (!c->destroy(c)) {
+            fprintf(stderr, "Failed to destroy the container.\n");
+            goto out;
+        }
         goto out;
     }
 
     /* Create the container */
-    if (!c->createl(c, "download", NULL, NULL, LXC_CREATE_QUIET,
-                    "-d", "ubuntu", "-r", "trusty", "-a", "i386", NULL)) {
+    if (!c->createl(c, "ubuntu", NULL, NULL, LXC_CREATE_QUIET,
+                    "-d", "ubuntu", "-r", "trusty", "-a", "amd64", NULL)) {
+        // if (!c->createl(c, "download", NULL, NULL, LXC_CREATE_QUIET,
+        //                 "-d", "ubuntu", "-r", "trusty", "-a", "i386", NULL)) {
         fprintf(stderr, "Failed to create container rootfs\n");
         goto out;
     }
@@ -37,18 +45,19 @@ int main() {
     /* Stop the container */
     if (!c->shutdown(c, 30)) {
         printf("Failed to cleanly shutdown the container, forcing.\n");
+        // sleep(10);
         if (!c->stop(c)) {
             fprintf(stderr, "Failed to kill the container.\n");
             goto out;
         }
     }
-
+    printf("Container Stopped\n");
     /* Destroy the container */
     if (!c->destroy(c)) {
         fprintf(stderr, "Failed to destroy the container.\n");
         goto out;
     }
-
+    printf("Container Destroyed\n");
     ret = 0;
 out:
     lxc_container_put(c);
