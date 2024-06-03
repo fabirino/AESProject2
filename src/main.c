@@ -1,8 +1,8 @@
 // #include "funcs.h"
 #include <lxc/lxccontainer.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 
 void print_menu() {
 
@@ -107,7 +107,6 @@ int main(int argc, char **argv) {
         scanf("%d", &option);
         fgetc(stdin); // Discard the newline character
 
-
         if (option != 0)
             printf("\033[H\033[J");
 
@@ -150,12 +149,12 @@ int main(int argc, char **argv) {
             }
 
             if (c->is_defined(c)) {
-                fprintf(stderr, "Container already exists\n");
+                fprintf(stderr, "Container already '%s' exists\n", container_name);
                 clear_screen();
                 break;
             }
 
-            printf("Creating container...\n");
+            printf("Creating container '%s'...\n", container_name);
 
             if (!c->createl(c, "download", NULL, NULL, LXC_CREATE_QUIET,
                             "-d", "ubuntu", "-r", "bionic", "-a", "amd64", NULL)) {
@@ -164,7 +163,7 @@ int main(int argc, char **argv) {
                 break;
             }
 
-            printf("Container created successfully\n");
+            printf("Container '%s' created successfully\n", container_name);
 
             clear_screen();
             break;
@@ -174,8 +173,7 @@ int main(int argc, char **argv) {
             fgets(container_name, 64, stdin);
             container_name[strcspn(container_name, "\n")] = 0;
 
-            // TODO: verificar se funciona assim ou se tenho de fazer um ciclo por eles todos e comparar o nome
-            c = lxc_container_new(container_name, NULL); // FIXME:
+            c = lxc_container_new(container_name, NULL);
 
             if (!c) {
                 fprintf(stderr, "Failed to setup lxc_container struct\n");
@@ -184,28 +182,88 @@ int main(int argc, char **argv) {
             }
 
             if (!c->is_defined(c)) {
-                fprintf(stderr, "Container does not exist\n");
+                fprintf(stderr, "Container does '%s' not exist\n", container_name);
                 clear_screen();
                 break;
             }
 
             printf("Destroying container...\n");
             if (!c->destroy(c)) {
-                fprintf(stderr, "Failed to destroy the container.\n");
+                fprintf(stderr, "Failed to destroy container '%s'.\n", container_name);
                 clear_screen();
                 break;
             }
 
-            printf("Container destroyed successfully\n");
+            printf("Container '%s' destroyed successfully\n", container_name);
             clear_screen();
             break;
         case 4:
-            printf("Starting container...\n");
+            printf("Write the name of the container you want to start: ");
+            fgets(container_name, 64, stdin);
+            container_name[strcspn(container_name, "\n")] = 0;
+
+            c = lxc_container_new(container_name, NULL);
+
+            if (!c) {
+                fprintf(stderr, "Failed to setup lxc_container struct\n");
+                clear_screen();
+                break;
+            }
+
+            if (!c->is_defined(c)) {
+                fprintf(stderr, "Container '%s' does not exist\n", container_name);
+                clear_screen();
+                break;
+            }
+
+            printf("Starting container '%s' ...\n", container_name);
+            /* Start the container */
+            if (!c->start(c, 0, NULL)) {
+                fprintf(stderr, "Failed to start the container '%s' \n", container_name);
+                clear_screen();
+                break;
+            }
+
+            printf("Container '%s' started successfully\n", container_name);
+
+            printf("Container state: %s\n", c->state(c));
+            printf("Container PID: %d\n", c->init_pid(c));
 
             clear_screen();
             break;
         case 5:
-            printf("Stopping container...\n");
+            printf("Write the name of the container you want to stop: ");
+            fgets(container_name, 64, stdin);
+            container_name[strcspn(container_name, "\n")] = 0;
+
+            c = lxc_container_new(container_name, NULL);
+
+            if (!c) {
+                fprintf(stderr, "Failed to setup lxc_container struct\n");
+                clear_screen();
+                break;
+            }
+
+            if (!c->is_defined(c)) {
+                fprintf(stderr, "Container does '%s' not exist\n", container_name);
+                clear_screen();
+                break;
+            }
+
+            printf("Stopping container '%s' ...\n", container_name);
+
+            if (!c->shutdown(c, 30)) {
+                // FIXME:
+                printf("Failed to cleanly shutdown container '%s', forcing.\n", container_name);
+                // sleep(10);
+                if (!c->stop(c)) {
+                    fprintf(stderr, "Failed to kill the container '%s'.\n", container_name);
+                    clear_screen();
+                    break;
+                }
+            }
+
+            printf("Container '%s' stopped successfully\n", container_name);
 
             clear_screen();
             break;
